@@ -1,0 +1,60 @@
+#!bin/bash
+
+read -p "Como quieres llamar la base de datos?" BASENAME
+read -p "Que username quieres?" USERNAME
+read -p "Que contraseña quieres utilizar?" -s PASSWORD
+
+#Instalamos dependencias
+
+apt update 
+apt install -y mysql-server apache2 php libapache2-mod-php php-mysql php-curl php-gd php-mbstring php-xml php-xmlrpc php-soap php-intl php-zip -y
+
+# Configuramos PHP  
+
+sed 's/post_max_size = 8M/post_max_size = 150M' "/etc/php/8.1/apache2/php.ini"
+sed 's/upload_max_filesize = 2M/upload_max_filesize = 100M' "/etc/php/8.1/apache2/php.ini"
+sed 's/max_execution_time = 30/max_execution_time = 120' "/etc/php/8.1/apache2/php.ini"
+
+
+# Comandos para Mysql
+mysql -e "
+        CREATE DATABASE $BASENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+
+        CREATE USER $USERNAME@% IDENTIFIED BY $PASSWORD;
+
+        GRANT ALL ON wordpress.* TO $USERNAME@%;
+
+        GRANT ALL ON wordpress.* TO $USERNAME@%;
+
+        FLUSH PRIVILEGES;
+"
+
+# Configuraracion para la carpeta wordpress
+
+sed 's/\/var/www/html/\/var/www/html/wordpress' "/etc/apache2/sites-available/00-default.conf"
+
+a2enmod rewrite
+
+systemctl restart apache2
+
+# Descargar el archivo de wordpress y lo desconprimimos
+
+cd /tmp
+
+        curl -O https://wordpress.org/latest.tar.gz
+
+        tar xf latest.tar.gz -C /var/www/html/
+
+        chown -R www-data:www-data /var/www/html/wordpress/
+
+# configuramos wordpress
+
+cp /var/www/html/wordpress/wp-config-sample.php/var/www/html/wordpress/wp-config.php
+
+nano /var/www/html/wordpress/wp-config.php
+
+        define( 'DB_NAME', '$BASENAME' );
+        define( 'DB_USER', '$USERNAME' );
+        define( 'DB_PASSWORD', '$PASSWPRD' );
+        define( 'DB_HOST', '192.168.1.16' );
+        define( 'DB_CHARSET', 'utf8' );
